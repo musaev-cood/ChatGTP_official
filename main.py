@@ -1,20 +1,18 @@
-from aiogram import Bot, Dispatcher, types
-from aiogram.contrib.fsm_storage.memory import MemoryStorage
+from aiogram import Dispatcher, types
 from aiogram.dispatcher import FSMContext
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.dispatcher.filters.state import StatesGroup, State
 from aiogram import executor
 from aiogram.dispatcher.filters.builtin import CommandStart
 from aiogram.dispatcher.filters.builtin import CommandHelp
-import pyttsx3
+import openai
 
+import Config
 from Config import bot
-from Config import engine
 from Config import SendMsgOrVoice
 
-openai.api_key = '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'
-dp = Dispatcher(bot, storage=Congig.storage)
-
+openai.api_key = 'sk-mIQDgJCuwl6TecPwx3rT3BlbkFJSKBfFWErNEfFMiY35cQG'
+dp = Dispatcher(bot, storage=Config.storage)
 
 
 class AI(StatesGroup):
@@ -22,12 +20,29 @@ class AI(StatesGroup):
 
 
 async def on_startup(dispatcher):
+    print(dispatcher)
     await dp.bot.set_my_commands(
         [
             types.BotCommand("start", "Запустить бота"),
             types.BotCommand("helps", "Вывести справку")
         ]
     )
+
+
+@dp.message_handler(state=AI.talk, content_types=types.ContentTypes.VOICE)
+async def handle_voice(message: types.Message, state: FSMContext):
+    if message.voice:
+        userText = await Config.SpeechToText(message)
+        if userText is not None:
+            await Config.openAI(message, userText, state)
+        else:
+            await SendMsgOrVoice(message, 'Извините, голосовую запись не удалось распознать.')
+
+
+@dp.message_handler(state=AI.talk)
+async def chat_talk(message: types.Message, state: FSMContext):
+    userText = message.text
+    await Config.openAI(message, userText, state)
 
 
 @dp.message_handler(CommandStart())
