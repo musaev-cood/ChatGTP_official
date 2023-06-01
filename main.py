@@ -32,17 +32,17 @@ async def on_startup(dispatcher):
 @dp.message_handler(state=AI.talk, content_types=types.ContentTypes.VOICE)
 async def handle_voice(message: types.Message, state: FSMContext):
     if message.voice:
-        userText = await Config.SpeechToText(message)
-        if userText is not None:
-            await Config.openAI(message, userText, state)
+        user_text = await Config.SpeechToText(message)
+        if user_text is not None:
+            await Config.openAI(message, user_text, state)
         else:
             await SendMsgOrVoice(message, 'Извините, голосовую запись не удалось распознать.')
 
 
 @dp.message_handler(state=AI.talk)
 async def chat_talk(message: types.Message, state: FSMContext):
-    userText = message.text
-    await Config.openAI(message, userText, state)
+    user_text = message.text
+    await Config.openAI(message, user_text, state)
 
 
 @dp.message_handler(CommandStart())
