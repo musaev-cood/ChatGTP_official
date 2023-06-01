@@ -1,10 +1,21 @@
 from aiogram import Bot, Dispatcher, types
+from aiogram.contrib.fsm_storage.memory import MemoryStorage
+from aiogram.dispatcher import FSMContext
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.dispatcher.filters.state import StatesGroup, State
 from aiogram import executor
 from aiogram.dispatcher.filters.builtin import CommandStart
 from aiogram.dispatcher.filters.builtin import CommandHelp
+import pyttsx3
 
 bot = Bot(token='6116196699:AAFuaTa_k3OrOwBnhu3vLwEOSrLDg1l_7Gw')
-dp = Dispatcher(bot)
+storage = MemoryStorage()
+dp = Dispatcher(bot, storage=storage)
+engine = pyttsx3.init()
+
+
+class AI(StatesGroup):
+    talk = State()
 
 
 async def on_startup(dispatcher):
@@ -16,16 +27,26 @@ async def on_startup(dispatcher):
     )
 
 
-async def SendMsgOrVoice(message, text, replymark=None):
-    await message.bot.send_message(message.from_user.id, text, reply_markup=replymark)
-
-
 @dp.message_handler(CommandStart())
 async def bot_start(message: types.Message):
-    kb = InlineKeyboardMarkup(row_width=1, inline_keyboard=[
-        [InlineKeyboardButton(text="Начать чат с ИИ", callback_data="start")]])
-
+    kb = InlineKeyboardMarkup(row_width=1,
+                              inline_keyboard=[[InlineKeyboardButton(text="Начать чат с ИИ", callback_data="start")]])
     await SendMsgOrVoice(message, f"Привет, {message.from_user.full_name}! Этот бот предоставит доступ к ChatGPT.", kb)
+
+
+@dp.callback_query_handler(text='start')
+async def chat_start(call: types.CallbackQuery, state: FSMContext):
+    kb = InlineKeyboardMarkup(row_width=1, inline_keyboard=[
+        [InlineKeyboardButton(text="Закончить чат", callback_data="start"),
+         InlineKeyboardButton(text="Стереть память", callback_data="start")]])
+
+    await SendMsgOrVoice(call, "Отправть сообщение, чтобы начать переписку", kb)
+    await AI.talk.set()
+    await state.update_data(history=[{"question": None, "answer": None}])
+
+
+async def SendMsgOrVoice(message, text, replymark=None):
+    await message.bot.send_message(message.from_user.id, text, reply_markup=replymark)
 
 
 @dp.message_handler(CommandHelp())
@@ -33,16 +54,21 @@ async def bot_help(message: types.Message):
     text = ("Список команд: ",
             "/start - Начать диалог",
             "/help - Получить справку")
-
     await SendMsgOrVoice(message, "\n".join(text))
 
 
-@dp.callback_query_handler(text='start')
-async def chat_start(call: types.CallbackQuery):
-    kb = InlineKeyboardMarkup(row_width=1, inline_keyboard=[
-        [InlineKeyboardButton(text="Закончить чат", callback_data="start"),
-         InlineKeyboardButton(text="Стереть память", callback_data="start")]])
+@dp.callback_query_handler(text='back', state='*')
+async def back(call: types.CallbackQuery, state: FSMContext):
+    kb = InlineKeyboardMarkup(row_width=1,
+                              inline_keyboard=[[InlineKeyboardButton(text="Начать чат с ИИ", callback_data="start")]])
+    await SendMsgOrVoice(call, f"Привет, {call.from_user.full_name}! Этот бот предоставит доступ к ChatGPT.", kb)
+    await state.finish()
 
-    await SendMsgOrVoice(call, "Отправть сообщение, чтобы начать переписку", kb)
+
+@dp.callback_query_handler(text='clear', state='*')
+async def clear(call: types.CallbackQuery, state: FSMContext):
+    await SendMsgOrVoice(call, 'Память ИИ стерта')
+    await state.update_data(history=[{"question": None, "answer": None}])
+
 
 executor.start_polling(dp, on_startup=on_startup)
