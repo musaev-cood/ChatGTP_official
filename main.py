@@ -8,10 +8,13 @@ from aiogram.dispatcher.filters.builtin import CommandStart
 from aiogram.dispatcher.filters.builtin import CommandHelp
 import pyttsx3
 
-bot = Bot(token='6116196699:AAFuaTa_k3OrOwBnhu3vLwEOSrLDg1l_7Gw')
-storage = MemoryStorage()
-dp = Dispatcher(bot, storage=storage)
-engine = pyttsx3.init()
+from Config import bot
+from Config import engine
+from Config import SendMsgOrVoice
+
+openai.api_key = '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'
+dp = Dispatcher(bot, storage=Congig.storage)
+
 
 
 class AI(StatesGroup):
@@ -43,10 +46,6 @@ async def chat_start(call: types.CallbackQuery, state: FSMContext):
     await SendMsgOrVoice(call, "Отправть сообщение, чтобы начать переписку", kb)
     await AI.talk.set()
     await state.update_data(history=[{"question": None, "answer": None}])
-
-
-async def SendMsgOrVoice(message, text, replymark=None):
-    await message.bot.send_message(message.from_user.id, text, reply_markup=replymark)
 
 
 @dp.message_handler(CommandHelp())
